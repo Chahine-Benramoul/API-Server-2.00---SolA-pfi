@@ -71,7 +71,7 @@ function attachCmd() {
     $('#renderManageUsersMenuCmd').on('click', renderManageUsers);
     $('#editProfilCmd').on('click', renderEditProfilForm);
     $('#aboutCmd').on("click", renderAbout);
-    $('#newPhotoCmd').on("click",renderAddPhotoForm);
+    $('#newPhotoCmd').on("click", renderAddPhotoForm);
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// Header management
@@ -285,18 +285,25 @@ async function renderError(message) {
     eraseContent();
     UpdateHeader("Problème", "error");
     $("#newPhotoCmd").hide();
+    let loggedUser = API.retrieveLoggedUser();
     $("#content").append(
         $(`
             <div class="errorContainer">
                 <b>${message}</b>
             </div>
             <hr>
+            ${loggedUser ? `
             <div class="form">
+                <button id="indexCmd" class="form-control btn-primary">Liste des photos</button>
+            </div>` :
+                `<div class="form">
                 <button id="connectCmd" class="form-control btn-primary">Connexion</button>
-            </div>
+             </div>`}
+            
         `)
     );
     $('#connectCmd').on('click', renderLoginForm);
+    $('#indexCmd').on('click', renderPhotos);
     /* pour debug
      $("#content").append(
         $(`
@@ -356,16 +363,16 @@ async function renderPhotos() {
 async function renderPhotosList() {
     timeout();
     eraseContent();
-    UpdateHeader('Liste des photos','photoList');
+    UpdateHeader('Liste des photos', 'photoList');
     let photos = await API.GetPhotos(); // ici on pourrait ajouter queryString quand on filtre
     // je fais les boutons pour modifier pour tester...
     console.log(photos);
     let html = '';
-    photos['data'].forEach((photo)=>{
-        html += `<input type="button" title=${photo.Title} value="Modifier" class="form-control btn-primary modifyBtn" id=${photo.Id}>`;
+    photos['data'].forEach((photo) => {
+        html += `<input type="button" title="${photo.Title}" value="Modifier" class="form-control btn-primary modifyBtn" id=${photo.Id}>`;
     })
     $("#content").append(html);
-    $(".modifyBtn").on("click",function(event){
+    $(".modifyBtn").on("click", function (event) {
         let idPhoto = event.currentTarget.id;
         console.log(idPhoto);
         renderEditPhotoForm(idPhoto);
@@ -773,10 +780,10 @@ function getFormData($form) {
 }
 
 ///////////// Partie B PFI //////////////
-function renderAddPhotoForm(){
+function renderAddPhotoForm() {
     timeout();
     eraseContent();
-    UpdateHeader("Ajout de photos",'addPhoto');
+    UpdateHeader("Ajout de photos", 'addPhoto');
     $("#newPhotoCmd").hide();
     let loggedUser = API.retrieveLoggedUser();
     $('#content').append(`
@@ -814,16 +821,15 @@ function renderAddPhotoForm(){
 
             <fieldset>
                 <legend>Image</legend>
-                <div class='imageUploader'
-                        required 
-                        newImage='true' 
+                <div class='imageUploader' 
+                        id='0'
                         controlId='Image' 
                         imageSrc='images/PhotoCloudLogo.png' 
                         waitingImage="images/Loading_icon.gif">
                 </div>                
             </fieldset>
             <span id=errorImage class="errorContainer p-0 d-flex justify-content-center"></span>
-
+            <span class="field-validation-valid text-danger" data-valmsg-for="Image" data-valmsg-replace="true"></span>
             <input type='submit' name='submit' id='savePhoto' value="Enregistrer" class="form-control btn-primary">
             
         </form>
@@ -838,112 +844,122 @@ function renderAddPhotoForm(){
     initFormValidation();
     // je ne pense pas qu'on doit checker si le title est pris... 
     // addConflictValidation(API.checkConflictURL(), 'Title', 'savePhoto');
-    $("#abortAddPhotoCmd").click(()=>renderPhotosList());
-    $("#addPhotoForm").on('submit',function(event){
+    $("#abortAddPhotoCmd").click(() => renderPhotosList());
+    $("#addPhotoForm").on('submit', function (event) {
         let photo = getFormData($('#addPhotoForm'));
         event.preventDefault();
-        
+
         console.log(photo);
-        if(photo.Image.trim() == '')
+
+        if (photo.Image.trim() == '')
             $("#errorImage").text(`Veuillez ajouter une image`);
-        else
-        {
+        else {
             showWaitingGif();
             addPhoto(photo);
         }
     })
 }
 
-async function renderEditPhotoForm(photoId){
+async function renderEditPhotoForm(photoId) {
     timeout();
     eraseContent();
-    UpdateHeader("Modification de photo",'modifyPhoto');
+    UpdateHeader("Modification de photo", 'modifyPhoto');
     $("#newPhotoCmd").hide();
     let loggedUser = await API.retrieveLoggedUser();
     let photo = await API.GetPhotosById(photoId);
-    console.log(photo);
-    $('#content').append(`
-        <br/>
-        <form class="form" id="editPhotoForm">
-            <input type=hidden name=OwnerId value=${loggedUser.Id} />
-            <fieldset>
-                <legend>Informations</legend>
-                <input  type="text" 
-                        class="form-control " 
-                        name="Title" 
-                        id="Title"
-                        placeholder="Titre" 
-                        required 
-                        RequireMessage = 'Veuillez entrer votre titre'
-                        InvalidMessage = 'Titre invalide'
-                        value = ${photo.Title}
-                        >
+    console.log(photo.OwnerId, loggedUser.Id);
+    if (photo.OwnerId == loggedUser.Id) {
+        $('#content').append(`
+            <br/>
+            <form class="form" id="editPhotoForm">
+                <input type=hidden name=OwnerId value="${photo.OwnerId}" />
+                <input type=hidden name=Id value="${photo.Id}" />
+                <fieldset>
+                    <legend>Informations</legend>
+                    <input  type="text" 
+                            class="form-control " 
+                            name="Title" 
+                            id="Title"
+                            placeholder="Titre" 
+                            required 
+                            RequireMessage = 'Veuillez entrer votre titre'
+                            InvalidMessage = 'Titre invalide'
+                            value = "${photo.Title}"
+                            >
+    
+                    <textarea id=Description 
+                              class=form-control
+                              name=Description
+                              rows=5
+                              cols=30
+                              placeholder=Description
+                              RequireMessage = 'Veuillez entrer votre description'
+                              InvalidMessage = 'Description invalide'
+                              required 
+    
+                    >${photo.Description}</textarea>
+                    <div class="d-flex align-items-center">
+                        <input class="mt-0 mb-0" type=checkbox name=Shared id=Shared 
+                        ${photo.Shared ? 'checked' : ''} />
+                        <label class=noselect style="margin-top:19px;margin-bottom:10px;margin-left:5px;" for=Shared>Partagée</label>
+                    </div>
+                </fieldset>
+    
+                <fieldset>
+                    <legend>Image</legend>
+                    <div class='imageUploader'
+                            required 
+                            newImage='true' 
+                            controlId='Image' 
+                            imageSrc='${photo.Image}' 
+                            waitingImage="images/Loading_icon.gif">
+                    </div>                
+                </fieldset>
+                <span id=errorImage class="errorContainer p-0 d-flex justify-content-center"></span>
+    
+                <input type='submit' name='submit' id='savePhoto' value="Enregistrer" class="form-control btn-primary">
+                
+            </form>
+    
+            <div class="cancel">
+                <button class="form-control btn-secondary" id="abortEditPhotoCmd">Annuler</button>
+            </div>
+    
+        `);
+        initImageUploaders();
+        // 
+        initFormValidation();
+        // je ne pense pas qu'on doit checker si le title est pris... 
+        // addConflictValidation(API.checkConflictURL(), 'Title', 'savePhoto');
+        $("#abortEditPhotoCmd").click(() => renderPhotosList());
+        $("#editPhotoForm").on('submit', function (event) {
+            let photo = getFormData($('#editPhotoForm'));
+            event.preventDefault();
 
-                <textarea id=Description 
-                          class=form-control
-                          name=Description
-                          rows=5
-                          cols=30
-                          placeholder=Description
-                          RequireMessage = 'Veuillez entrer votre description'
-                          InvalidMessage = 'Description invalide'
-                          required 
+            console.log(photo);
 
-                >${photo.Description}</textarea>
-                <div class="d-flex align-items-center">
-                    <input class="mt-0 mb-0" type=checkbox name=Shared id=Shared 
-                    ${photo.Shared ? 'checked': ''} />
-                    <label class=noselect style="margin-top:19px;margin-bottom:10px;margin-left:5px;" for=Shared>Partagée</label>
-                </div>
-            </fieldset>
-
-            <fieldset>
-                <legend>Image</legend>
-                <div class='imageUploader'
-                        required 
-                        newImage='true' 
-                        controlId='Image' 
-                        imageSrc='${photo.Image}' 
-                        waitingImage="images/Loading_icon.gif">
-                </div>                
-            </fieldset>
-            <span id=errorImage class="errorContainer p-0 d-flex justify-content-center"></span>
-
-            <input type='submit' name='submit' id='savePhoto' value="Enregistrer" class="form-control btn-primary">
-            
-        </form>
-
-        <div class="cancel">
-            <button class="form-control btn-secondary" id="abortAddPhotoCmd">Annuler</button>
-        </div>
-
-    `);
-    initImageUploaders();
-    // 
-    initFormValidation();
-    // je ne pense pas qu'on doit checker si le title est pris... 
-    // addConflictValidation(API.checkConflictURL(), 'Title', 'savePhoto');
-    $("#abortAddPhotoCmd").click(()=>renderPhotosList());
-    $("#addPhotoForm").on('submit',function(event){
-        let photo = getFormData($('#addPhotoForm'));
-        event.preventDefault();
-        
-        console.log(photo);
-        if(photo.Image.trim() == '')
-            $("#errorImage").text(`Veuillez ajouter une image`);
-        else
-        {
             showWaitingGif();
-            addPhoto(photo);
-        }
-    })
+            editPhoto(photo);
+
+        })
+    } else {
+        renderError("Vous n'avez pas l'autorisation de modifier cette photo.")
+    }
 }
 
-async function addPhoto(photo){
-    if(await API.CreatePhoto(photo)){
+async function addPhoto(photo) {
+    if (await API.CreatePhoto(photo)) {
         renderPhotos();
     }
-    else{
+    else {
         renderError('Une erreur est survenu lors du téléversement de votre photo.');
+    }
+}
+
+async function editPhoto(photo) {
+    if (await API.UpdatePhoto(photo)) {
+        renderPhotos();
+    } else {
+        renderError('Une erreur est survenu lors de la modification de votre photo.');
     }
 }

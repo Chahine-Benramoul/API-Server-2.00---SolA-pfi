@@ -33,31 +33,36 @@ export default
         }
         else {
             // pas sur de la partie ici Authorizations.user()
-            if (Authorizations.granted(this.HttpContext, Authorizations.user()))
-                this.HttpContext.response.JSON(this.repository.getAll(this.HttpContext.path.params), this.repository.ETag, true, Authorizations.user());
+            let currentUserToken = TokensManager.find(this.HttpContext.req.headers['authorization'].replace('Bearer ', ''));
+            if (Authorizations.granted(this.HttpContext, Authorizations.user())){
+                let photos = this.repository.getAll(this.HttpContext.path.params);
+                photos = photos.filter(photo => photo.Shared || (currentUserToken.User.Id == photo.OwnerId) || Authorizations.granted(this.HttpContext, Authorizations.admin()))
+                this.HttpContext.response.JSON(photos, this.repository.ETag, true, Authorizations.user());
+            }
             else
                 this.HttpContext.response.unAuthorized("Unauthorized access");
         }
     }
 
-    test(id){
-        if (id != undefined) {
-            if (Authorizations.readGranted(this.HttpContext, Authorizations.user()))
-                this.HttpContext.response.JSON(this.repository.get(id));
-            else
-                this.HttpContext.response.unAuthorized("Unauthorized access");
-        }
-        else {
-            // pas sur de la partie ici Authorizations.user()
-            if (Authorizations.granted(this.HttpContext, Authorizations.user()))
-                this.HttpContext.response.JSON(this.repository.getAll(this.HttpContext.path.params), this.repository.ETag, true, Authorizations.user());
-            else
-                this.HttpContext.response.unAuthorized("Unauthorized access");
-        }
-    }
 
-    modify(photo){
-
+    put(photo){
+        if(this.repository != null){
+            photo.Date = utilities.nowInSeconds();
+            if(!photo.Shared)
+                photo.Shared = false;
+            else
+                photo.Shared = true;
+            let updatedPhoto = this.repository.update(photo.Id,photo);
+            if(this.repository.model.state.isValid){
+                this.HttpContext.response.updated(updatedPhoto);
+            }else{
+                if (this.repository.model.state.inConflict)
+                    this.HttpContext.response.conflict(this.repository.model.state.errors);
+                else
+                    this.HttpContext.response.badRequest(this.repository.model.state.errors);
+            }
+        }else
+            this.HttpContext.response.notImplemented();
     }
     // on vient override le POST du controller par defaut pour custom notre approche
     post(photo){
