@@ -757,3 +757,4 @@ function getFormData($form) {
     return jsonObject;
 }
 
+///////////// Partie B PFI //////////////
