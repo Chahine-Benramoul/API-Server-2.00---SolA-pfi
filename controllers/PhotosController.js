@@ -86,10 +86,15 @@ export default
     }
     remove(id){
         // a tester...
-        // on veut que le proprio ou admin puisse envler sa photo
-        if(Authorizations.writeGranted(this.HttpContext,Authorizations.user()))
+        // on veut que le proprio ou admin puisse envler la photo
+        let photo = this.repository.get(id);
+        let currentUserToken = TokensManager.find(this.HttpContext.req.headers['authorization'].replace('Bearer ', ''));
+        let canRemove = Authorizations.writeGranted(this.HttpContext,Authorizations.admin()) || (photo.OwnerId == currentUserToken.User.Id);
+        if(canRemove)
         {
             super.remove(id);
+        }else{
+            this.HttpContext.response.notAloud("Current user is not allowed to remove this photo.");
         }
     }
 }

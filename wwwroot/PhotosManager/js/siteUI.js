@@ -367,11 +367,49 @@ async function renderPhotosList() {
     let photos = await API.GetPhotos(); // ici on pourrait ajouter queryString quand on filtre
     // je fais les boutons pour modifier pour tester...
     console.log(photos);
-    let html = '';
+    let html = '<div class=photosLayout>';
+    let loggedUser = API.retrieveLoggedUser();
+    let isAdmin = loggedUser.Authorizations.writeAccess == 2;
+    console.log(isAdmin); 
+    // voir si le loggedUser est admin
     photos['data'].forEach((photo) => {
-        html += `<input type="button" title="${photo.Title}" value="Modifier" class="form-control btn-primary modifyBtn" id=${photo.Id}>`;
+        html += `
+        <div class="photoLayout">
+            <div class=photoLayoutNoScrollSnap>
+                <div class=photoTitleContainer photoId=${photo.Id}>
+                    <div class=photoTitle style=padding:5px; title="${photo.Title}">${photo.Title}</div>
+                    ${(photo.OwnerId == loggedUser.Id) || isAdmin ? `
+                    <i title=Modifier class="fa-solid fa-pencil cmdIconSmall" style=margin-right:5px;></i> 
+                    <i title=Supprimer class="fa-solid fa-trash cmdIconSmall" style=margin-right:5px;></i>`:''}                
+                </div>
+                <div class=photoImage style=background-image:url("${photo.Image}")>
+                    <div title="${photo.Owner.Name}" class=UserAvatarSmall style=background-image:url("${photo.Owner.Avatar}");></div>
+                    ${(photo.OwnerId == loggedUser.Id) && photo.Shared ? `
+                    <div title="Partagée" class=UserAvatarSmall style=background-image:url("images/shared.png");background-color:rgba(0,0,0,.5);background-color:white></div>`:''}  
+                </div>
+                <div class=photoCreationDate>
+                    <span style=padding-left:5px;>${secondsToDateString(photo.Date)}</span>
+                    <div class=likesSummary>
+                        <div>99</div>
+                        <i class="fa-regular fa-thumbs-up cmdIconSmall"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        `;
     })
+    html += '</div>';
     $("#content").append(html);
+    $(".fa-pencil").on("click",function(event){
+        let photoId = $(event.currentTarget).parent().attr('photoId');
+        console.log(photoId);
+        renderEditPhotoForm(photoId);
+    });
+    $('.fa-trash').on("click",function(event){
+        let photoId = $(event.currentTarget).parent().attr('photoId');
+        console.log(photoId);
+        renderConfirmDeletePhoto(photoId);
+    })
     $(".modifyBtn").on("click", function (event) {
         let idPhoto = event.currentTarget.id;
         console.log(idPhoto);
@@ -867,8 +905,9 @@ async function renderEditPhotoForm(photoId) {
     $("#newPhotoCmd").hide();
     let loggedUser = await API.retrieveLoggedUser();
     let photo = await API.GetPhotosById(photoId);
+    let isAdmin = loggedUser.Authorizations.writeAccess == 2;
     console.log(photo.OwnerId, loggedUser.Id);
-    if (photo.OwnerId == loggedUser.Id) {
+    if ((photo.OwnerId == loggedUser.Id) || isAdmin) {
         $('#content').append(`
             <br/>
             <form class="form" id="editPhotoForm">
@@ -961,5 +1000,59 @@ async function editPhoto(photo) {
         renderPhotos();
     } else {
         renderError('Une erreur est survenu lors de la modification de votre photo.');
+    }
+}
+
+function secondsToDateString(dateInSeconds, localizationId = 'fr-FR') {
+    const hoursOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' };
+    return new Date(dateInSeconds * 1000).toLocaleDateString(localizationId, hoursOptions);
+}
+
+async function renderConfirmDeletePhoto(photoId){
+    timeout();
+    let loggedUser = await API.retrieveLoggedUser();
+    let photo = await API.GetPhotosById(photoId);
+    if (loggedUser && photo) {
+        eraseContent();
+        UpdateHeader("Retrait de photo", "confirmDeletePhoto");
+        $("#newPhotoCmd").hide();
+        $("#content").append(`
+            <div class="content">
+                <br>                
+                <div style="max-width:355px !important;margin:auto;">
+                 <h4> Voulez-vous vraiment effacer cette photo? </h4>
+                    <div class="photoLayout p-0">
+      
+                            <div class=photoTitleContainer photoId=${photo.Id}>
+                                <div class=photoTitle style=padding:5px; title="${photo.Title}">${photo.Title}</div>                
+                            </div>
+                            <img class=photoImage src="${photo.Image}"></img>                
+                        
+                    </div>
+                    <button photoId=${photo.Id} class="form-control btn-danger" id="deletePhotoCmd">Effacer cette photo</button>
+                    <br>
+                    <button class="form-control btn-secondary" id="cancelDeletePhotoCmd">Annuler</button>
+                </div>
+            </div>
+        `);
+        $("#deletePhotoCmd").on("click", deletePhoto);
+        $('#cancelDeletePhotoCmd').on('click', renderPhotos);
+    }else{
+        if(!loggedUser)
+            renderError('Vous devez être connecté pour effacer une photo.');
+        else if(!photo)
+            renderError('Cette photo est introuvable.');
+    }
+}
+
+async function deletePhoto(event){
+    let loggedUser = await API.retrieveLoggedUser();
+    let photoId = $(event.currentTarget).attr('photoId');
+    if(loggedUser){
+        if(await API.DeletePhoto(photoId)){
+            renderPhotos();
+        }else{
+            
+        }
     }
 }
