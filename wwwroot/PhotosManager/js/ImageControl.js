@@ -201,6 +201,7 @@ function validExtension(ext) {
 
 function preLoadImage(event) {
     // extract the id of the event target
+    console.log(event);
     let id = event.target.id.split('_')[0];
     let UploadedImage = document.querySelector('#' + id + '_UploadedImage');
     let waitingImage = UploadedImage.getAttribute("waitingImage");
