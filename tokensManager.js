@@ -63,6 +63,18 @@ export default
         return null;
     }
 
+    // static getUserId(access_Token){
+    //     let tokens = tokensRepository.getAll();
+    //     for (let token of tokens) {
+    //         if (token.User.Id == userId) {
+    //             // renew expiration date
+    //             token.Expire_Time = utilities.nowInSeconds() + tokenLifeDuration;
+    //             tokensRepository.update(token.Id, token);
+    //             return token;
+    //         }
+    //     }
+    //     return null;
+    // }
 }
 
 // periodic cleaning of expired tokens

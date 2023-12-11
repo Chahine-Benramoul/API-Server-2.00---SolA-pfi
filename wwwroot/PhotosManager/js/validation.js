@@ -54,7 +54,7 @@ function initFormValidation() {
         $(this).attr("pattern", String.raw`^\S{6,}$`);
     });
 
-    $("input, select").each(function () {
+    $("input, select, div[Image]").each(function () {
         let RequireMessage = $(this).attr('RequireMessage') != null ? $(this).attr('RequireMessage') : defaultRequireMessage;
         let InvalidMessage = $(this).attr('InvalidMessage') != null ? $(this).attr('InvalidMessage') : defaultInvalidMessage;
         let CustomErrorMessage = $(this).attr('CustomErrorMessage') != null ? $(this).attr('CustomErrorMessage') : defaultCustomErrorMessage;
@@ -93,7 +93,10 @@ function initFormValidation() {
         matchedInput.on("change", function () { input.attr("pattern", matchedInput.val()); })
         matchedInput.on("focus", function () { input.attr("pattern", matchedInput.val()); })
         input.on("focus", function () { input.attr("pattern", matchedInput.val()); })
-    })
+    });
+
+    //
+    // $("div[Image]").
 }
 
 let timer;
