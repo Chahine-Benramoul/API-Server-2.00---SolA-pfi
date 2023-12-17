@@ -21,5 +21,7 @@ RouteRegister.add('POST', 'accounts', 'promote');
 RouteRegister.add('GET','photos');
 RouteRegister.add('PUT','photos','modify');
 
+RouteRegister.add("GET", "photos", "handleLike");
+
 let server = new APIServer();
 server.start();
