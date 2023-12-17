@@ -472,12 +472,12 @@ async function renderPhotosList(sortedPhotos=null) {
     timeout();
     eraseContent();
     UpdateHeader('Liste des photos', 'photoList');
+    canRefresh=true;
     
     let photos;
     if(sortedPhotos && Array.isArray(sortedPhotos)) 
         photos = sortedPhotos;
     else {
-        canRefresh=true;
         photos = await API.GetPhotos(); 
         photos = photos.data;    
         selected = '*'
