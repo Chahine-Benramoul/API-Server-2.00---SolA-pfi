@@ -18,16 +18,61 @@ let HorizontalPhotosCount;
 let VerticalPhotosCount;
 let offset = 0;
 
+
+// 
+let canRefresh=true;
+let idIntervalle = null;
+
+let selected='';
+
+let funcs = {
+    '*' : renderPhotosList,
+    'm' : sortByConnectedUser,
+    'd' : sortByDate,
+    'w' : sortByOwner
+};
+
 Init_UI();
+
 function Init_UI() {
     getViewPortPhotosRanges();
     initTimeout(delayTimeOut, renderExpiredSession);
     installWindowResizeHandler();
-    if (API.retrieveLoggedUser())
+    if (API.retrieveLoggedUser()) {
         renderPhotos();
+        startUpdates();
+    }
     else
         renderLoginForm();
 }
+
+
+///// refresh
+async function checkForPhotoUpdates() {
+    const photosEtag = await API.GetPhotosETag();
+    
+    if(photosEtag) {
+        if(currentETag=="") {
+            currentETag = photosEtag;
+        } else if (photosEtag !== currentETag) {
+            currentETag = photosEtag;
+            if(canRefresh) {
+                funcs[selected]();
+            } 
+        }
+    }
+}
+
+function startUpdates() {
+    console.log('debut');
+    idIntervalle = setInterval(checkForPhotoUpdates, 2000);
+}
+
+function stopUpdates () {
+    clearInterval(idIntervalle);
+    console.log('arret');
+}
+
 
 // pour la pagination
 function getViewPortPhotosRanges() {
@@ -210,8 +255,11 @@ async function login(credential) {
     } else {
         let loggedUser = API.retrieveLoggedUser();
         if (loggedUser.VerifyCode == 'verified') {
-            if (!loggedUser.isBlocked)
+            if (!loggedUser.isBlocked) {
                 renderPhotos();
+                startUpdates()
+            }
+
             else {
                 loginMessage = "Votre compte a été bloqué par l'administrateur";
                 logout();
@@ -224,6 +272,7 @@ async function login(credential) {
 async function logout() {
     console.log('logout');
     await API.logout();
+    stopUpdates();
     renderLoginForm();
 }
 function isVerified() {
@@ -348,6 +397,7 @@ async function renderError(message) {
     ); */
 }
 function renderAbout() {
+    canRefresh=false;
     timeout();
     saveContentScrollPosition();
     eraseContent();
@@ -427,8 +477,10 @@ async function renderPhotosList(sortedPhotos=null) {
     if(sortedPhotos && Array.isArray(sortedPhotos)) 
         photos = sortedPhotos;
     else {
-        photos = await API.GetPhotos(); // ici on pourrait ajouter queryString quand on filtre
+        canRefresh=true;
+        photos = await API.GetPhotos(); 
         photos = photos.data;    
+        selected = '*'
     }
 
     
@@ -589,6 +641,7 @@ function renderCreateProfil() {
 }
 async function renderManageUsers() {
     timeout();
+    canRefresh=false;
     let loggedUser = API.retrieveLoggedUser();
     if (loggedUser.isAdmin) {
         if (isVerified()) {
@@ -689,6 +742,7 @@ async function renderConfirmDeleteAccount(userId) {
     }
 }
 function renderEditProfilForm() {
+    canRefresh=false;
     timeout();
     let loggedUser = API.retrieveLoggedUser();
     if (loggedUser) {
@@ -875,6 +929,7 @@ function getFormData($form) {
 function renderAddPhotoForm() {
     timeout();
     eraseContent();
+    canRefresh=false;
     UpdateHeader("Ajout de photos", 'addPhoto');
     $("#newPhotoCmd").hide();
     let loggedUser = API.retrieveLoggedUser();
@@ -1043,6 +1098,7 @@ async function renderEditPhotoForm(photoId) {
 async function addPhoto(photo) {
     if (await API.CreatePhoto(photo)) {
         renderPhotos();
+        
     }
     else {
         renderError('Une erreur est survenu lors du téléversement de votre photo.');
@@ -1173,6 +1229,7 @@ async function sortByConnectedUser() {
         photos = photos['data'].filter(p => p.OwnerId === logged.Id);
         if(photos.length > 0) {
             console.log(photos);
+            selected='m'
             renderPhotosList(photos);
         } else {
             $("#content").html(`
@@ -1190,7 +1247,7 @@ async function sortByDate() {
         photos.sort((a, b) => {
             return b.Date - a.Date; 
         });
-
+        selected='d'
         renderPhotosList(photos);
     }
 }
@@ -1210,6 +1267,8 @@ async function sortByOwner () {
             }
             return 0;
         });
+        selected='w'
         renderPhotosList(photos);
     }
 }
+
