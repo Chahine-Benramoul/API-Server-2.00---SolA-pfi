@@ -1,20 +1,20 @@
 import Authorizations from '../authorizations.js';
 import Repository from '../models/repository.js';
 import PhotoModel from '../models/photo.js';
-//import PhotoLikeModel from '../models/photoLike.js';
 import Controller from './Controller.js';
 import * as utilities from "../utilities.js";
 import TokensManager from '../tokensManager.js';
 import AccountsController from './AccountsController.js';
+import LikeModel from "../models/like.js";
 
 export default
     class Photos extends Controller {
     constructor(HttpContext) {
         super(HttpContext, new Repository(new PhotoModel()), Authorizations.user());
-        //this.photoLikesRepository = new Repository(new PhotoLikeModel());
+        this.photoLikesRepository = new Repository(new LikeModel());
     }
     
-    get(id){
+    get(id) {
         if (id != undefined) {
             if (Authorizations.readGranted(this.HttpContext, Authorizations.user())){
                 let photo = this.repository.get(id);
@@ -27,7 +27,6 @@ export default
                 else
                     this.HttpContext.response.unAuthorized("Unauthorized access");
             }
-
             else
                 this.HttpContext.response.unAuthorized("Unauthorized access");
         }
@@ -96,5 +95,9 @@ export default
         }else{
             this.HttpContext.response.notAloud("Current user is not allowed to remove this photo.");
         }
+    }
+
+    handleLike(id) {
+        console.log(id);
     }
 }
