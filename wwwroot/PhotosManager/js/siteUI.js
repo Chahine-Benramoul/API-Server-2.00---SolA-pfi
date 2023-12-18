@@ -29,7 +29,8 @@ let funcs = {
     '*' : renderPhotosList,
     'm' : sortByConnectedUser,
     'd' : sortByDate,
-    'w' : sortByOwner
+    'w' : sortByOwner,
+    'l' : sortByLike,
 };
 
 Init_UI();
@@ -123,6 +124,7 @@ function attachCmd() {
     $('#ownerOnlyCmd').on('click', sortByConnectedUser);
     $("#sortByDateCmd").on('click', sortByDate);
     $("#sortByOwnersCmd").on('click', sortByOwner);
+    $("#sortByLikesCmd").on('click', sortByLike);
     // $("#sortingFilters").on('click',assignCheck)
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -534,8 +536,10 @@ async function renderPhotosList(sortedPhotos=null) {
         console.log(idPhoto);
         renderEditPhotoForm(idPhoto);
     });
-
-    renderDetail();
+    $(".photoImage").click(async (e) => {
+        renderDetail($(e.target).attr('id'));
+    });
+    
 
     like();
 }
@@ -1131,37 +1135,38 @@ async function like() {
         
         if (res) {
             console.log(res);
-            let likes = await API.getLikes(id);
-            if (likes) {
-                let ar = likes['data'];
+            renderDetail(id)
+            // let likes = await API.getLikes(id);
+            // if (likes) {
+            //     let ar = likes['data'];
 
-                if(ar.length <= 1) {
-                    console.log('1 ou moins')
-                    if(ar.length === 0) {
-                        console.log('unlike');
-                    } else if(ar[0].inst.userId === logged.Id) {
-                        console.log('like');
-                    } else {
-                        console.log('unlike');
-                    }
-                } else {
-                    console.log('plus de 1')
-                    console.log(ar);
-                    ar.forEach(l => {
-                        console.log(`id des users qui ont like: ${l.inst.userId} `);
-                    });
-                }
-            }
+            //     if(ar.length <= 1) {
+            //         console.log('1 ou moins')
+            //         if(ar.length === 0) {
+            //             console.log('unlike');
+            //         } else if(ar[0].inst.userId === logged.Id) {
+            //             console.log('like');
+            //         } else {
+            //             console.log('unlike');
+            //         }
+            //     } else {
+            //         console.log('plus de 1')
+            //         console.log(ar);
+            //         ar.forEach(l => {
+            //             console.log(`id des users qui ont like: ${l.inst.userId} `);
+            //         });
+            //     }
+            // }
         }
     });
 }
 
-function renderDetail() {
-    $(".photoImage").click(async (e) => {
+async function renderDetail(rId = null) {
+    
         showWaitingGif();
         
         let loggedUser = API.retrieveLoggedUser();
-        let id = $(e.target).attr('id');
+        let id = rId;
         let photo = await API.GetPhotosById(id);
         let likesNames = await API.getLikes(id);
 
@@ -1218,7 +1223,7 @@ function renderDetail() {
         }
 
         
-    });
+   
 }
 
 async function editPhoto(photo) {
@@ -1336,7 +1341,27 @@ async function sortByOwner (event) {
         renderPhotosList(photos);
     }
 }
-
+async function sortByLike(){
+    let photos = await API.GetPhotos(`?limit=${limit}&offset=${offset - 1}`);
+    
+    if (photos) {
+        canRefresh = true;
+        photos = photos['data'];
+        console.log(photos);
+        photos.sort((a, b) => {
+            if (a.likesNumber > b.likesNumber) {
+                return -1;
+            }
+            if (a.likesNumber < b.likesNumber) {
+                return 1;
+            }
+            return 0;
+        });
+        selected='l';
+        console.log('sortedPhotos',photos);
+        renderPhotosList(photos);
+    }
+}
 // PAGINATION
 
 function renderPagination(){
