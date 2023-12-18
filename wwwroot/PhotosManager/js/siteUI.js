@@ -16,14 +16,14 @@ let photoContainerHeight = 400;
 let limit;
 let HorizontalPhotosCount;
 let VerticalPhotosCount;
-let offset = 0;
+let offset = 1;
 
 
 // 
 let canRefresh = true;
 let idIntervalle = null;
 
-let selected='';
+let selected='*';
 
 let funcs = {
     '*' : renderPhotosList,
@@ -81,7 +81,7 @@ function getViewPortPhotosRanges() {
     HorizontalPhotosCount = Math.round($("#content").innerWidth() / photoContainerWidth);
     limit = (VerticalPhotosCount + 1) * HorizontalPhotosCount;
     console.log("VerticalPhotosCount:", VerticalPhotosCount, "HorizontalPhotosCount:", HorizontalPhotosCount)
-    offset = 0;
+    offset = 1;
 }
 // pour la pagination
 function installWindowResizeHandler() {
@@ -102,8 +102,11 @@ function installWindowResizeHandler() {
         console.log('resize end');
         if ($('#photosLayout') != null) {
             getViewPortPhotosRanges();
-            if (currentViewName == "photosList")
+            if (currentViewName == "photosList"){
                 renderPhotosList();
+                selected = '*';
+                UpdateHeader("Liste des photos","photosList");
+            }
         }
     });
 }
@@ -340,6 +343,7 @@ function showWaitingGif() {
 }
 function eraseContent() {
     $("#content").empty();
+    $("#paginationDiv").remove();
 }
 function saveContentScrollPosition() {
     contentScrollPosition = $("#content")[0].scrollTop;
@@ -437,6 +441,7 @@ async function renderPhotos() {
     let loggedUser = API.retrieveLoggedUser();
     if (loggedUser) {
         renderPhotosList();
+        // renderPagination();
     }
     else {
         renderLoginForm();
@@ -476,6 +481,7 @@ function renderPhoto(photo, likes) {
 async function renderPhotosList(sortedPhotos=null) {
     timeout();
     eraseContent();
+    renderPagination();
     UpdateHeader('Liste des photos', 'photosList');
     canRefresh=true;
     
@@ -483,13 +489,11 @@ async function renderPhotosList(sortedPhotos=null) {
     if(sortedPhotos && Array.isArray(sortedPhotos)) 
         photos = sortedPhotos;
     else {
-        photos = await API.GetPhotos(`?limit=${limit}&offset=${offset}`); 
+        photos = await API.GetPhotos(`?limit=${limit}&offset=${offset - 1}`); 
         photos = photos.data;    
-        selected = '*'
+        // selected = '*'
     }
 
-    
-    
     // je fais les boutons pour modifier pour tester...
     
     // console.log(photos);
@@ -505,13 +509,16 @@ async function renderPhotosList(sortedPhotos=null) {
         photos.forEach((photo) => {
             html += renderPhoto(photo,likesNumber[photo.Id]);
         });
-    } else {
+    } else if(photos.length == 1) {
         html += renderPhoto(photos[0]);
+    }else{
+        html += `Aucune photo à afficher pour cette page.`;
     }
 
     html += '</div>';
 
     $("#content").append(html);
+
     $(".fa-pencil").on("click",function(event){
         let photoId = $(event.currentTarget).parent().attr('photoId');
         console.log(photoId);
@@ -1277,7 +1284,7 @@ async function deletePhoto(event){
 // TRI
 async function sortByConnectedUser() {
     showWaitingGif();   
-    let photos = await API.GetPhotos();
+    let photos = await API.GetPhotos(`?limit=${limit}&offset=${offset - 1}`);
     const logged = API.retrieveLoggedUser();
 
     if(photos && logged) {
@@ -1288,6 +1295,7 @@ async function sortByConnectedUser() {
             selected='m'
             renderPhotosList(photos);
         } else {
+            renderPagination();
             $("#content").html(`
                 vous n'avez aucune photo
             `);
@@ -1298,7 +1306,7 @@ async function sortByConnectedUser() {
 
 async function sortByDate() {
     showWaitingGif();   
-    let photos = await API.GetPhotos();
+    let photos = await API.GetPhotos(`?limit=${limit}&offset=${offset - 1}`);
     if(photos) {
         photos = photos['data'];
         photos.sort((a, b) => {
@@ -1311,7 +1319,7 @@ async function sortByDate() {
 
 async function sortByOwner (event) {
 
-    let photos = await API.GetPhotos();
+    let photos = await API.GetPhotos(`?limit=${limit}&offset=${offset - 1}`);
     
     if (photos) {
         photos = photos['data'];
@@ -1331,6 +1339,30 @@ async function sortByOwner (event) {
 
 // PAGINATION
 
-async function renderPagination(){
-    
+function renderPagination(){
+    $('#content').before(`
+        <div id="paginationDiv" class="noselect" >
+            <i role=button id=previousPageCmd class="fa-solid fa-chevron-left fa-lg noselect" title="page précédente"></i>
+            <input class="text-center" type=number id=pageNumber value="${offset}" style="max-width:50px;"/>            
+            <i role=button id=nextPageCmd class="fa-solid fa-chevron-right fa-lg noselect" title="page suivante"></i>
+        </div>
+    `);
+    $('#nextPageCmd').click(()=>{
+        console.log($('#pageNumber').val());
+        let numberNow = parseInt($('#pageNumber').val());
+        numberNow = numberNow + 1;
+        $('#pageNumber').val(numberNow);
+        offset = numberNow;
+        // renderPhotos();
+        funcs[selected]();
+    });
+    $('#previousPageCmd').click(()=>{
+        let numberNow = parseInt($('#pageNumber').val());
+        console.log(numberNow);
+        numberNow = numberNow > 1 ? numberNow - 1 : 1;
+        $('#pageNumber').val(numberNow);
+        offset = numberNow;
+        // renderPhotos();
+        funcs[selected]();
+    });
 }
