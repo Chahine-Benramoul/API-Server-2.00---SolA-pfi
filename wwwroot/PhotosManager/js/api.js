@@ -289,17 +289,35 @@ class API {
 
     static Like(id) {
         API.initHttpState();
-        console.log(serverHost);
+        //console.log(serverHost);
         return new Promise(resolve => {
             $.ajax({
-                url: serverHost + "/photos/handleLike/" + id,
-                type:"GET",
+                url: serverHost + photoLikes_API,
+                type:"POST",
                 headers: API.getBearerAuthorizationToken(),
+                contentType: 'application/json',
+                data: JSON.stringify(id),
                 success: () => { resolve (true) },
                 error : xhr => { 
                     API.setHttpErrorState(xhr); 
                     resolve(false);
                 }
+            });
+        });
+    }
+
+    static getLikes(id = null){
+        let url = serverHost + photoLikes_API + (id ? '/'+id : "");
+        return new Promise(resolve => {
+            $.ajax({
+                url: url,
+                headers: API.getBearerAuthorizationToken(),
+                type: 'GET',
+                success: (data, status, xhr) => {
+                    let ETag = xhr.getResponseHeader("ETag");
+                    resolve({ data, ETag });
+                },
+                error: xhr => { API.setHttpErrorState(xhr); resolve(false); }
             });
         });
     }

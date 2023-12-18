@@ -120,6 +120,7 @@ function attachCmd() {
     $('#ownerOnlyCmd').on('click', sortByConnectedUser);
     $("#sortByDateCmd").on('click', sortByDate);
     $("#sortByOwnersCmd").on('click', sortByOwner);
+    // $("#sortingFilters").on('click',assignCheck)
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// Header management
@@ -145,25 +146,27 @@ function loggedUserMenu() {
                 <i class="menuIcon fa fa-image mx-2"></i> Liste des photos
             </span>
             <div class="dropdown-divider"></div>
-            <span class="dropdown-item" id="sortByDateCmd">
-            <i class="menuIcon fa fa-check mx-2"></i>
-            <i class="menuIcon fa fa-calendar mx-2"></i>
-            Photos par date de création
-            </span>
-            <span class="dropdown-item" id="sortByOwnersCmd">
-            <i class="menuIcon fa fa-fw mx-2"></i>
-            <i class="menuIcon fa fa-users mx-2"></i>
-            Photos par créateur
-            </span>
-            <span class="dropdown-item" id="sortByLikesCmd">
-            <i class="menuIcon fa fa-fw mx-2"></i>
-            <i class="menuIcon fa fa-user mx-2"></i>
-            Photos les plus aiméés
-            </span>
-            <span class="dropdown-item" id="ownerOnlyCmd">
-            <i class="menuIcon fa fa-fw mx-2"></i>
-            <i class="menuIcon fa fa-user mx-2"></i>
-            Mes photos
+            <span id=sortingFilters>
+                <span class="dropdown-item" id="sortByDateCmd">
+                    ${selected == 'd' ? `<i class="menuIcon fa fa-check mx-2"></i>` : '<i class="menuIcon fa fa-fw mx-2"></i>'}
+                    <i class="menuIcon fa fa-calendar mx-2"></i>
+                    Photos par date de création
+                </span>
+                <span class="dropdown-item" id="sortByOwnersCmd">
+                    ${selected == 'w' ? `<i class="menuIcon fa fa-check mx-2"></i>` : '<i class="menuIcon fa fa-fw mx-2"></i>'}
+                    <i class="menuIcon fa fa-users mx-2"></i>
+                    Photos par créateur
+                </span>
+                <span class="dropdown-item" id="sortByLikesCmd">
+                    ${selected == 'l' ? `<i class="menuIcon fa fa-check mx-2"></i>` : '<i class="menuIcon fa fa-fw mx-2"></i>'}
+                    <i class="menuIcon fa fa-user mx-2"></i>
+                    Photos les plus aimées
+                </span>
+                <span class="dropdown-item" id="ownerOnlyCmd">
+                    ${selected == 'm' ? `<i class="menuIcon fa fa-check mx-2"></i>` : '<i class="menuIcon fa fa-fw mx-2"></i>'}
+                    <i class="menuIcon fa fa-user mx-2"></i>
+                    Mes photos
+                </span>
             </span>
         `;
     }
@@ -438,18 +441,18 @@ async function renderPhotos() {
     }
 }
 
-function renderPhoto(photo) {
+function renderPhoto(photo, likes) {
     let loggedUser = API.retrieveLoggedUser();
     let isAdmin = loggedUser.Authorizations.writeAccess == 2;
-    console.log(photo.Owner.Name);
+
     return `
         <div class="photoLayout">
                 <div class=photoLayoutNoScrollSnap>
                     <div class=photoTitleContainer photoId=${photo.Id}>
                         <div class=photoTitle style=padding:5px; title="${photo.Title}">${photo.Title}</div>
                     ${(photo.OwnerId == loggedUser.Id) || isAdmin ? `
-                    <i title=Modifier class="fa-solid fa-pencil cmdIconSmall like" style=margin-right:5px;></i> 
-                    <i title=Supprimer class="fa-solid fa-trash cmdIconSmall like" style=margin-right:5px;></i>`:''}                
+                    <i title=Modifier class="fa-solid fa-pencil cmdIconSmall" style=margin-right:5px;></i> 
+                    <i title=Supprimer class="fa-solid fa-trash cmdIconSmall" style=margin-right:5px;></i>`:''}                
                 </div>
                 <div id='${photo.Id}' class=photoImage style=background-image:url("${photo.Image}")>
                     <div title="${photo.Owner.Name}" class=UserAvatarSmall style=background-image:url("${photo.Owner.Avatar}");></div>
@@ -459,7 +462,7 @@ function renderPhoto(photo) {
                 <div class=photoCreationDate>
                     <span style=padding-left:5px;>${secondsToDateString(photo.Date)}</span>
                     <div class='likesSummary' idPub="${photo.Id}">
-                        <div>99</div>
+                        <div>${likes ? likes : '0'}</div>
                         <i class="fa-regular fa-thumbs-up cmdIconSmall like" idPub="${photo.Id}"></i>
                     </div>
                 </div>
@@ -491,9 +494,14 @@ async function renderPhotosList(sortedPhotos=null) {
     let html = '<div class=photosLayout>';
     
     // voir si le loggedUser est admin
+    let likesNumber = await API.getLikes();
+    likesNumber = likesNumber.data;
+
+    console.log(likesNumber);
+
     if(photos.length > 1) {
         photos.forEach((photo) => {
-            html += renderPhoto(photo);
+            html += renderPhoto(photo,likesNumber[photo.Id]);
         });
     } else {
         html += renderPhoto(photos[0]);
@@ -520,7 +528,7 @@ async function renderPhotosList(sortedPhotos=null) {
 
     renderDetail();
 
-    // like();
+    like();
 }
 function renderVerify() {
     eraseContent();
@@ -1105,9 +1113,10 @@ async function addPhoto(photo) {
     }
 }
 
-async function like() { // PAS FONCTIONNEL
+async function like() { 
     $(".like").click(async (e) => {
-        let id = $(e.target).attr('idPub');
+        let id = $(e.target).parent().attr('idPhoto');
+        console.log(id);        
         let res = await API.Like(id);
 
         if (res) {
@@ -1122,9 +1131,16 @@ function renderDetail() {
         
         let id = $(e.target).attr('id');
         let photo = await API.GetPhotosById(id);
+        let likesNames = await API.getLikes(id);
+
         
+        let Names = '';
+        likesNames.data.forEach(element => {
+            Names += `${element.Name} \n`
+        });
+
         if(photo) {
-            let nbLikes;
+            let nbLikes = likesNames.data.length;
             const owner = photo.Owner;
             $("#content").html(`
                 <div class='photoDetailsOwner'> 
@@ -1140,8 +1156,8 @@ function renderDetail() {
                 <div class='photoCreationDate' style='margin-left:5px;'>
                     ${secondsToDateString(photo.Date)}
                 
-                    <div class=likesSummary idPhoto='${photo.Id}' >
-                            <div>99</div>
+                    <div class=likesSummary idPhoto='${photo.Id}' title="${Names}">
+                            <div>${nbLikes}</div>
                             <i class="fa-regular fa-thumbs-up cmdIconSmall like"></i>
                     </div>
                 </div> 
@@ -1151,7 +1167,7 @@ function renderDetail() {
                 </div>
                 
             `);
-
+            like();
             // generer les likes
 
         }
@@ -1236,6 +1252,7 @@ async function sortByConnectedUser() {
                 vous n'avez aucune photo
             `);
         }
+        $()
     }
 }
 
@@ -1252,7 +1269,7 @@ async function sortByDate() {
     }
 }
 
-async function sortByOwner () {
+async function sortByOwner (event) {
 
     let photos = await API.GetPhotos();
     
