@@ -51,18 +51,20 @@ export default
                 photo.Shared = false;
             else
                 photo.Shared = true;
-            let updatedPhoto = this.repository.update(photo.Id,photo);
-            if(this.repository.model.state.isValid){
-                this.HttpContext.response.updated(updatedPhoto);
-            }else{
-                if (this.repository.model.state.inConflict)
-                    this.HttpContext.response.conflict(this.repository.model.state.errors);
-                else
-                    this.HttpContext.response.badRequest(this.repository.model.state.errors);
-            }
+            super.put(photo);
+            // let updatedPhoto = this.repository.update(photo.Id,photo);
+            // if(this.repository.model.state.isValid){
+            //     this.HttpContext.response.updated(updatedPhoto);
+            // }else{
+            //     if (this.repository.model.state.inConflict)
+            //         this.HttpContext.response.conflict(this.repository.model.state.errors);
+            //     else
+            //         this.HttpContext.response.badRequest(this.repository.model.state.errors);
+            // }
         }else
             this.HttpContext.response.notImplemented();
     }
+    
     // on vient override le POST du controller par defaut pour custom notre approche
     post(photo){
         if(this.repository != null){
@@ -71,15 +73,16 @@ export default
                 photo.Shared = false;
             else
                 photo.Shared = true;
-            let newPhoto = this.repository.add(photo);
-            if(this.repository.model.state.isValid){
-                this.HttpContext.response.created(newPhoto);
-            }else{
-                if (this.repository.model.state.inConflict)
-                    this.HttpContext.response.conflict(this.repository.model.state.errors);
-                else
-                    this.HttpContext.response.badRequest(this.repository.model.state.errors);
-            }
+            super.post(photo);
+            // let newPhoto = this.repository.add(photo);
+            // if(this.repository.model.state.isValid){
+            //     this.HttpContext.response.created(newPhoto);
+            // }else{
+            //     if (this.repository.model.state.inConflict)
+            //         this.HttpContext.response.conflict(this.repository.model.state.errors);
+            //     else
+            //         this.HttpContext.response.badRequest(this.repository.model.state.errors);
+            // }
         }else
             this.HttpContext.response.notImplemented();
     }

@@ -124,7 +124,7 @@ function attachCmd() {
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// Header management
-function loggedUserMenu() {
+function loggedUserMenu(viewName) {
     let loggedUser = API.retrieveLoggedUser();
     if (loggedUser) {
         let manageUserMenu = `
@@ -145,29 +145,8 @@ function loggedUserMenu() {
             <span class="dropdown-item" id="listPhotosMenuCmd">
                 <i class="menuIcon fa fa-image mx-2"></i> Liste des photos
             </span>
-            <div class="dropdown-divider"></div>
-            <span id=sortingFilters>
-                <span class="dropdown-item" id="sortByDateCmd">
-                    ${selected == 'd' ? `<i class="menuIcon fa fa-check mx-2"></i>` : '<i class="menuIcon fa fa-fw mx-2"></i>'}
-                    <i class="menuIcon fa fa-calendar mx-2"></i>
-                    Photos par date de création
-                </span>
-                <span class="dropdown-item" id="sortByOwnersCmd">
-                    ${selected == 'w' ? `<i class="menuIcon fa fa-check mx-2"></i>` : '<i class="menuIcon fa fa-fw mx-2"></i>'}
-                    <i class="menuIcon fa fa-users mx-2"></i>
-                    Photos par créateur
-                </span>
-                <span class="dropdown-item" id="sortByLikesCmd">
-                    ${selected == 'l' ? `<i class="menuIcon fa fa-check mx-2"></i>` : '<i class="menuIcon fa fa-fw mx-2"></i>'}
-                    <i class="menuIcon fa fa-user mx-2"></i>
-                    Photos les plus aimées
-                </span>
-                <span class="dropdown-item" id="ownerOnlyCmd">
-                    ${selected == 'm' ? `<i class="menuIcon fa fa-check mx-2"></i>` : '<i class="menuIcon fa fa-fw mx-2"></i>'}
-                    <i class="menuIcon fa fa-user mx-2"></i>
-                    Mes photos
-                </span>
-            </span>
+            ${viewMenu(viewName)}
+            
         `;
     }
     else
@@ -177,9 +156,32 @@ function loggedUserMenu() {
             </span>`;
 }
 function viewMenu(viewName) {
+    console.log(viewName);
     if (viewName == "photosList") {
         return `
-        
+        <div class="dropdown-divider"></div>
+        <span id=sortingFilters>
+            <span class="dropdown-item" id="sortByDateCmd">
+                ${selected == 'd' ? `<i class="menuIcon fa fa-check mx-2"></i>` : '<i class="menuIcon fa fa-fw mx-2"></i>'}
+                <i class="menuIcon fa fa-calendar mx-2"></i>
+                Photos par date de création
+            </span>
+            <span class="dropdown-item" id="sortByOwnersCmd">
+                ${selected == 'w' ? `<i class="menuIcon fa fa-check mx-2"></i>` : '<i class="menuIcon fa fa-fw mx-2"></i>'}
+                <i class="menuIcon fa fa-users mx-2"></i>
+                Photos par créateur
+            </span>
+            <span class="dropdown-item" id="sortByLikesCmd">
+                ${selected == 'l' ? `<i class="menuIcon fa fa-check mx-2"></i>` : '<i class="menuIcon fa fa-fw mx-2"></i>'}
+                <i class="menuIcon fa fa-user mx-2"></i>
+                Photos les plus aimées
+            </span>
+            <span class="dropdown-item" id="ownerOnlyCmd">
+                ${selected == 'm' ? `<i class="menuIcon fa fa-check mx-2"></i>` : '<i class="menuIcon fa fa-fw mx-2"></i>'}
+                <i class="menuIcon fa fa-user mx-2"></i>
+                Mes photos
+            </span>
+        </span>
         `;
     }
     else
@@ -214,9 +216,9 @@ function UpdateHeader(viewTitle, viewName) {
                     <i class="cmdIcon fa fa-ellipsis-vertical"></i>
                 </div>
                 <div class="dropdown-menu noselect">
-                    ${loggedUserMenu()}
+                    ${loggedUserMenu(viewName)}
 
-                    ${viewMenu(viewName)}
+                    
                     <div class="dropdown-divider"></div>
                     <span class="dropdown-item" id="aboutCmd">
                         <i class="menuIcon fa fa-info-circle mx-2"></i> À propos...
@@ -446,7 +448,7 @@ function renderPhoto(photo, likes) {
     let isAdmin = loggedUser.Authorizations.writeAccess == 2;
 
     return `
-        <div class="photoLayout">
+        <div class="photoLayout" role=button>
                 <div class=photoLayoutNoScrollSnap>
                     <div class=photoTitleContainer photoId=${photo.Id}>
                         <div class=photoTitle style=padding:5px; title="${photo.Title}">${photo.Title}</div>
@@ -474,14 +476,14 @@ function renderPhoto(photo, likes) {
 async function renderPhotosList(sortedPhotos=null) {
     timeout();
     eraseContent();
-    UpdateHeader('Liste des photos', 'photoList');
+    UpdateHeader('Liste des photos', 'photosList');
     canRefresh=true;
     
     let photos;
     if(sortedPhotos && Array.isArray(sortedPhotos)) 
         photos = sortedPhotos;
     else {
-        photos = await API.GetPhotos(); 
+        photos = await API.GetPhotos(`?limit=${limit}&offset=${offset}`); 
         photos = photos.data;    
         selected = '*'
     }
@@ -1121,6 +1123,7 @@ async function like() {
 
         if (res) {
             console.log(res);
+
         }
     });
 }
@@ -1142,6 +1145,8 @@ function renderDetail() {
         if(photo) {
             let nbLikes = likesNames.data.length;
             const owner = photo.Owner;
+            UpdateHeader("Détails","DetailPhoto");
+            $("#newPhotoCmd").hide();
             $("#content").html(`
                 <div class='photoDetailsOwner'> 
                     <div title='${owner.Name}' class="UserAvatarSmall" style="background-image:url('${owner.Avatar}');"> 
@@ -1289,3 +1294,8 @@ async function sortByOwner (event) {
     }
 }
 
+// PAGINATION
+
+async function renderPagination(){
+    
+}
