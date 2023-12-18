@@ -20,7 +20,7 @@ let offset = 0;
 
 
 // 
-let canRefresh=true;
+let canRefresh = true;
 let idIntervalle = null;
 
 let selected='';
@@ -492,7 +492,7 @@ async function renderPhotosList(sortedPhotos=null) {
     
     // je fais les boutons pour modifier pour tester...
     
-    console.log(photos);
+    // console.log(photos);
     let html = '<div class=photosLayout>';
     
     // voir si le loggedUser est admin
@@ -1116,14 +1116,35 @@ async function addPhoto(photo) {
 }
 
 async function like() { 
-    $(".like").click(async (e) => {
+    $(".like").off().click(async (e) => {
         let id = $(e.target).parent().attr('idPhoto');
         console.log(id);        
-        let res = await API.Like(id);
-
+        let res = await API.Like(id);   
+        let logged = API.retrieveLoggedUser();
+        
         if (res) {
             console.log(res);
+            let likes = await API.getLikes(id);
+            if (likes) {
+                let ar = likes['data'];
 
+                if(ar.length <= 1) {
+                    console.log('1 ou moins')
+                    if(ar.length === 0) {
+                        console.log('unlike');
+                    } else if(ar[0].inst.userId === logged.Id) {
+                        console.log('like');
+                    } else {
+                        console.log('unlike');
+                    }
+                } else {
+                    console.log('plus de 1')
+                    console.log(ar);
+                    ar.forEach(l => {
+                        console.log(`id des users qui ont like: ${l.inst.userId} `);
+                    });
+                }
+            }
         }
     });
 }
@@ -1132,50 +1153,64 @@ function renderDetail() {
     $(".photoImage").click(async (e) => {
         showWaitingGif();
         
+        let loggedUser = API.retrieveLoggedUser();
         let id = $(e.target).attr('id');
         let photo = await API.GetPhotosById(id);
         let likesNames = await API.getLikes(id);
 
+        let s = '<i class="fa-regular fa-thumbs-up cmdIconSmall like"></i>'
+
         
         let Names = '';
-        likesNames.data.forEach(element => {
-            Names += `${element.Name} \n`
-        });
+        if(likesNames) {
+            console.log(likesNames)
+            likesNames.data.forEach(element => {
+                Names += `${element.inst.UserName} \n`
+                if(element.inst.userId === loggedUser.Id) {
+                    s ='<i class="fa-solid fa-thumbs-up cmdIconSmall like"></i>'
+                }
+            });
 
-        if(photo) {
-            let nbLikes = likesNames.data.length;
-            const owner = photo.Owner;
-            UpdateHeader("Détails","DetailPhoto");
-            $("#newPhotoCmd").hide();
-            $("#content").html(`
-                <div class='photoDetailsOwner'> 
-                    <div title='${owner.Name}' class="UserAvatarSmall" style="background-image:url('${owner.Avatar}');"> 
-                    </div> 
-                    <div> ${owner.Name} </div>
-                </div>
-                <hr>
-                <div class ='photoDetailsTitle'> 
-                    ${photo.Title}
-                </div>
-                <img class='photoDetailsLargeImage' src='${photo.Image}'>
-                <div class='photoCreationDate' style='margin-left:5px;'>
-                    ${secondsToDateString(photo.Date)}
-                
-                    <div class=likesSummary idPhoto='${photo.Id}' title="${Names}">
-                            <div>${nbLikes}</div>
-                            <i class="fa-regular fa-thumbs-up cmdIconSmall like"></i>
+            
+
+            if(photo) {
+                console.log('ss')
+                let nbLikes = likesNames.data.length;
+                const owner = photo.Owner;
+                UpdateHeader("Détails","DetailPhoto");
+                $("#newPhotoCmd").hide();
+                $("#content").html(`
+                    <div class='photoDetailsOwner'> 
+                        <div title='${owner.Name}' class="UserAvatarSmall" style="background-image:url('${owner.Avatar}');"> 
+                        </div> 
+                        <div> ${owner.Name} </div>
                     </div>
-                </div> 
-
-                <div class='photoDetailsDescription'>
-                    ${photo.Description}
-                </div>
-                
-            `);
-            like();
-            // generer les likes
-
+                    <hr>
+                    <div class ='photoDetailsTitle'> 
+                        ${photo.Title}
+                    </div>
+                    <img class='photoDetailsLargeImage' src='${photo.Image}'>
+                    <div class='photoCreationDate' style='margin-left:5px;'>
+                        ${secondsToDateString(photo.Date)}
+                    
+                        <div class=likesSummary idPhoto='${photo.Id}' title="${Names}">
+                                <div>${nbLikes}</div>
+                                ${s}
+                        </div>
+                    </div> 
+    
+                    <div class='photoDetailsDescription'>
+                        ${photo.Description}
+                    </div>
+                    
+                `);
+                like();
+                // generer les likes
+    
+            }
         }
+
+        
     });
 }
 

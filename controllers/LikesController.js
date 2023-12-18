@@ -14,14 +14,13 @@ export default class Likes extends Controller {
 
     get(photoId = null) {
         if(photoId) {
+            console.log("PHOTOID")
             let photoLikes = this.repository.findByFilter((elem)=>elem.photoId==photoId);
-            
+            // console.log(photoLikes);
             let photoLikesNames = photoLikes.map(photo => {
                 let inst = this.repository.get(photo.Id);
-                return {
-                    Name: inst.UserName,
-                    Id: inst.Id
-                };
+                console.log("inst", inst);
+                return { inst };
             });
 
             this.HttpContext.response.JSON(photoLikesNames);            
